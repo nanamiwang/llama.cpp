@@ -1833,64 +1833,38 @@ inline static void ggml_vec_dot_q8_0(const int n, float * restrict s, const void
 #error "TODO"
 #if QK == 32
     for (int i = 0; i < nb; i += 1) {
-        const float d0_0 = *(const float *) (pd0 + i*bs);
-        const float d1_0 = *(const float *) (pd1 + i*bs);
+        const float d0_0 = *(const float *) (pd0 + i*bs);  // x
+        const float d1_0 = *(const float *) (pd1 + i*bs);  // y
 
         //printf("d0_0: %f, d1_0: %f\n", d0_0, d1_0);
 
-        const uint8_t * restrict p0 = pb0 + i*bs;// x
-        const uint8_t * restrict p1 = pb1 + i*bs;// y
+        const uint8_t * restrict p0 = pb0 + i*bs;  // x
+        const uint8_t * restrict p1 = pb1 + i*bs;  // y
 
-        const int8x16_t  s128b = vdupq_n_s8(128);
+        const int8x32_t  s128b = vdupq_n_s8(128);
 
         const uint8x32_t v0_0 = vld1q_u8(p0);
         const uint8x32_t v1_0 = vld1q_u8(p1);
 
-        // 4-bit -> 8-bit
-        const int8x16_t v0_0l = vreinterpretq_s8_u8(vandq_u8(v0_0, m4b));
-        const int8x16_t v1_0l = vreinterpretq_s8_u8(vandq_u8(v1_0, m4b));
-
-        const int8x16_t v0_0h = vreinterpretq_s8_u8(vshrq_n_u8(v0_0, 4));
-        const int8x16_t v1_0h = vreinterpretq_s8_u8(vshrq_n_u8(v1_0, 4));
-
-        const int8x16_t v0_1l = vreinterpretq_s8_u8(vandq_u8(v0_1, m4b));
-        const int8x16_t v1_1l = vreinterpretq_s8_u8(vandq_u8(v1_1, m4b));
-
-        const int8x16_t v0_1h = vreinterpretq_s8_u8(vshrq_n_u8(v0_1, 4));
-        const int8x16_t v1_1h = vreinterpretq_s8_u8(vshrq_n_u8(v1_1, 4));
-
         // sub 128
-        const int8x16_t v0_0ls = vsubq_s8(v0_0l, s128b);
-        const int8x16_t v1_0ls = vsubq_s8(v1_0l, s128b);
+        const int8x32_t v0_0s = vsubq_s8(v0_0l, s128b);
+        const int8x32_t v1_0s = vsubq_s8(v1_0l, s128b);
 
-        const int8x16_t v0_0hs = vsubq_s8(v0_0h, s8b);
-        const int8x16_t v1_0hs = vsubq_s8(v1_0h, s8b);
-
-        const int8x16_t v0_1ls = vsubq_s8(v0_1l, s8b);
-        const int8x16_t v1_1ls = vsubq_s8(v1_1l, s8b);
-
-        const int8x16_t v0_1hs = vsubq_s8(v0_1h, s8b);
-        const int8x16_t v1_1hs = vsubq_s8(v1_1h, s8b);
-
+        // TODO: Fix me
+        GGML_ASSERT(0);
 #if defined(__ARM_FEATURE_DOTPROD)
-        // dot product into int16x8_t
-        int32x4_t p_0 = vdotq_s32(vdupq_n_s32(0), v0_0ls, v1_0ls);
-        int32x4_t p_1 = vdotq_s32(vdupq_n_s32(0), v0_1ls, v1_1ls);
-
-        p_0 = vdotq_s32(p_0, v0_0hs, v1_0hs);
-        p_1 = vdotq_s32(p_1, v0_1hs, v1_1hs);
+        // dot product into int32x8_t
+        int32x8_t p_0 = vdotq_s32(vdupq_n_s32(0), v0_0s, v1_0s);
 
         // scalar
 #if defined(__ARM_FEATURE_QRDMX)
         sum0 += d0_0*d1_0*vaddvq_s32(p_0);
-        sum1 += d0_1*d1_1*vaddvq_s32(p_1);
 #else
         sum0 += d0_0*d1_0*(vgetq_lane_s32(p_0, 0) + vgetq_lane_s32(p_0, 1) + vgetq_lane_s32(p_0, 2) + vgetq_lane_s32(p_0, 3));
-        sum1 += d0_1*d1_1*(vgetq_lane_s32(p_1, 0) + vgetq_lane_s32(p_1, 1) + vgetq_lane_s32(p_1, 2) + vgetq_lane_s32(p_1, 3));
 #endif
 #else
-	    const int16x8_t pl0l = vmull_s8(vget_low_s8 (v0_0ls), vget_low_s8 (v1_0ls));
-        const int16x8_t pl0h = vmull_s8(vget_high_s8(v0_0ls), vget_high_s8(v1_0ls));
+	    const int16x8_t pl0l = vmull_s8(vget_low_s8 (v0_0s), vget_low_s8 (v1_0s));
+        const int16x8_t pl0h = vmull_s8(vget_high_s8(v0_0s), vget_high_s8(v1_0s));
 
         const int16x8_t ph0l = vmull_s8(vget_low_s8 (v0_0hs), vget_low_s8 (v1_0hs));
         const int16x8_t ph0h = vmull_s8(vget_high_s8(v0_0hs), vget_high_s8(v1_0hs));
@@ -1909,6 +1883,7 @@ inline static void ggml_vec_dot_q8_0(const int n, float * restrict s, const void
 
         const int16x8_t p_0 = vaddq_s16(pl_0, ph_0);
         const int16x8_t p_1 = vaddq_s16(pl_1, ph_1);
+        // TODO: Fix me end
 
         // scalar
 #if defined(__ARM_FEATURE_QRDMX)
@@ -1978,6 +1953,7 @@ inline static void ggml_vec_dot_q8_0(const int n, float * restrict s, const void
 #error "not implemented for QK"
 #endif
 #elif defined(__wasm_simd128__)
+#error "TODO"
 #if QK == 32
     // wasm simd
     float sum0 = 0.0f;
