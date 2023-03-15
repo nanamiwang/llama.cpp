@@ -542,3 +542,51 @@ size_t ggml_quantize_q4_1(float * src, void * dst, int n, int k, int qk, int64_t
 
     return (n/k)*row_size;
 }
+
+size_t ggml_quantize_q8_0(float * src, void * dst, int n, int k, int qk, int64_t * hist) {
+    const int nb = k / qk;
+    const size_t bs = (sizeof(float) + sizeof(uint8_t)*qk);
+    const size_t row_size = nb*bs;
+
+    assert(k % qk == 0);
+
+    const size_t pp_size = qk;
+    uint8_t *pp = static_cast<uint8_t*>(alloca(pp_size));
+
+    char * pdst = (char *) dst;
+
+    for (int j = 0; j < n; j += k) {
+        uint8_t * pd = (uint8_t *) (pdst + (j/k)*row_size + 0*bs);
+        uint8_t * pb = (uint8_t *) (pdst + (j/k)*row_size + 0*bs + sizeof(float));
+
+        for (int i = 0; i < nb; i++) {
+            float amax = 0.0f; // absolute max
+
+            {
+                for (int l = 0; l < qk; l++) {
+                    const float v = src[j + i*qk + l];
+                    amax = std::max(amax, fabsf(v));
+                }
+
+                const float d = amax / ((1 << 7) - 1);
+                const float id = d ? 1.0f/d : 0.0f;
+
+                *(float *) pd = d;
+                pd += bs;
+
+                for (int l = 0; l < qk; l ++) {
+                    const float v0 = (src[j + i*qk + l])*id;
+                    const uint8_t vi0 = ((int8_t) (round(v0))) + 128;
+
+                    hist[vi0]++;
+                    pp[l] = vi0;
+                }
+
+                memcpy(pb, pp, pp_size);
+                pb += bs;
+            }
+        }
+    }
+
+    return (n/k)*row_size;
+}

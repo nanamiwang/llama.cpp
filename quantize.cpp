@@ -35,10 +35,11 @@ bool llama_model_quantize(const std::string & fname_inp, const std::string & fna
     switch (itype) {
         case 2: type = GGML_TYPE_Q4_0; break;
         case 3: type = GGML_TYPE_Q4_1; break;
+        case 4: type = GGML_TYPE_Q8_0; break;
         default: fprintf(stderr, "%s: invalid quantization type %d\n", __func__, itype); return 1;
     };
 
-    if (type != GGML_TYPE_Q4_0 && type != GGML_TYPE_Q4_1) {
+    if (type != GGML_TYPE_Q4_0 && type != GGML_TYPE_Q4_1 && type != GGML_TYPE_Q8_0) {
         fprintf(stderr, "%s: invalid quantization type %d\n", __func__, type);
         return false;
     }
@@ -139,6 +140,8 @@ bool llama_model_quantize(const std::string & fname_inp, const std::string & fna
         std::vector<float>       data_f32;
 
         std::vector<int64_t> hist_all(1 << 4, 0);
+        if(type == GGML_TYPE_Q8_0)
+            hist_all.resize(1 << 8, 0);
 
         while (true) {
             int32_t n_dims;
@@ -224,6 +227,8 @@ bool llama_model_quantize(const std::string & fname_inp, const std::string & fna
 
                 size_t cur_size = 0;
                 std::vector<int64_t> hist_cur(1 << 4, 0);
+                if(type == GGML_TYPE_Q8_0)
+                    hist_cur.resize(1 << 8, 0);
 
                 switch (type) {
                     case GGML_TYPE_Q4_0:
@@ -233,6 +238,10 @@ bool llama_model_quantize(const std::string & fname_inp, const std::string & fna
                     case GGML_TYPE_Q4_1:
                         {
                             cur_size = ggml_quantize_q4_1(data_f32.data(), work.data(), nelements, ne[0], QK, hist_cur.data());
+                        } break;
+                    case GGML_TYPE_Q8_0:
+                        {
+                            cur_size = ggml_quantize_q8_0(data_f32.data(), work.data(), nelements, ne[0], QK, hist_cur.data());
                         } break;
                     default:
                         {
@@ -294,6 +303,7 @@ int main(int argc, char ** argv) {
         fprintf(stderr, "usage: %s model-f32.bin model-quant.bin type\n", argv[0]);
         fprintf(stderr, "  type = 2 - q4_0\n");
         fprintf(stderr, "  type = 3 - q4_1\n");
+        fprintf(stderr, "  type = 4 - q8_0\n");
         return 1;
     }
 
