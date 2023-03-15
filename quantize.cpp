@@ -167,7 +167,7 @@ bool llama_model_quantize(const std::string & fname_inp, const std::string & fna
             finp.read (&name[0], length);
 
             {
-                static const char * ftype_str[] = { "f32", "f16", "q4_0", "q4_1", };
+                static const char * ftype_str[] = { "f32", "f16", "q4_0", "q4_1", "q8_0"};
                 printf("%48s - [%5d, %5d], type = %6s ", name.data(), ne[0], ne[1], ftype_str[ftype]);
             }
 
