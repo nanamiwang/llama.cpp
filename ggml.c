@@ -1543,7 +1543,6 @@ inline static void ggml_vec_dot_q4_0(const int n, float * restrict s, const void
     float sumf = 0.0;
 
 #ifdef __ARM_NEON
-#error "TODO"
 #if QK == 32
     float sum0 = 0.0f;
     float sum1 = 0.0f;
@@ -1831,6 +1830,7 @@ inline static void ggml_vec_dot_q8_0(const int n, float * restrict s, const void
     float sumf = 0.0;
 
 #ifdef __ARM_NEON
+#error "TODO"
 #if QK == 32
     for (int i = 0; i < nb; i += 1) {
         const float d0_0 = *(const float *) (pd0 + i*bs);
