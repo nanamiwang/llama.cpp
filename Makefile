@@ -31,8 +31,8 @@ endif
 #
 
 CFLAGS   = -I.              -O3 -DNDEBUG -std=c11   -fPIC
-CXXFLAGS = -I. -I./examples -O3 -DNDEBUG -std=c++11 -fPIC
-LDFLAGS  =
+CXXFLAGS = -I. -I./examples -O3 -DNDEBUG -std=c++17 -fPIC
+LDFLAGS  = -lsentencepiece
 
 # OS specific
 # TODO: support Windows

@@ -18,6 +18,14 @@
 #include <signal.h>
 #endif
 
+#include <string_view>
+#include <sentencepiece_processor.h>
+
+
+//Tokenizer object
+sentencepiece::SentencePieceProcessor processor;
+
+
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
 #define ANSI_COLOR_YELLOW  "\x1b[33m"
@@ -793,6 +801,11 @@ const char * llama_print_system_info(void) {
 }
 
 int main(int argc, char ** argv) {
+    const auto status = processor.Load("../tinygrad/weights/LLaMA/tokenizer.model");
+    if (!status.ok()) {
+       printf("Load sentencepiece model error: %s", status.ToString().c_str());
+       // error
+    }
     ggml_time_init();
     const int64_t t_main_start_us = ggml_time_us();
 
@@ -848,12 +861,14 @@ int main(int argc, char ** argv) {
     std::vector<float> logits;
 
     // tokenize the prompt
-    std::vector<gpt_vocab::id> embd_inp = ::llama_tokenize(vocab, params.prompt, true);
+    std::vector<gpt_vocab::id> embd_inp; // = ::llama_tokenize(vocab, params.prompt, true);
+    processor.Encode(params.prompt, &embd_inp);
 
     params.n_predict = std::min(params.n_predict, model.hparams.n_ctx - (int) embd_inp.size());
 
     // tokenize the reverse prompt
-    std::vector<gpt_vocab::id> antiprompt_inp = ::llama_tokenize(vocab, params.antiprompt, false);
+    std::vector<gpt_vocab::id> antiprompt_inp; // = ::llama_tokenize(vocab, params.antiprompt, false);
+    processor.Encode(params.antiprompt, &antiprompt_inp);
 
     fprintf(stderr, "\n");
     fprintf(stderr, "%s: prompt: '%s'\n", __func__, params.prompt.c_str());
@@ -1026,7 +1041,8 @@ int main(int argc, char ** argv) {
                         buf[n_read+1] = 0;
                     }
 
-                    std::vector<gpt_vocab::id> line_inp = ::llama_tokenize(vocab, buf, false);
+                    std::vector<gpt_vocab::id> line_inp; // = ::llama_tokenize(vocab, buf, false);
+                    processor.Encode(buf, &line_inp);
                     embd_inp.insert(embd_inp.end(), line_inp.begin(), line_inp.end());
 
                     remaining_tokens -= line_inp.size();
