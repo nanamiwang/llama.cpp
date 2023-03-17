@@ -7,6 +7,7 @@ Inference of [LLaMA](https://arxiv.org/abs/2302.13971) model in pure C/C++
 
 **Hot topics:**
 
+- RMSNorm implementation / fixes: https://github.com/ggerganov/llama.cpp/issues/173
 - Cache input prompts for faster initialization: https://github.com/ggerganov/llama.cpp/issues/64
 - Create a `llama.cpp` logo: https://github.com/ggerganov/llama.cpp/issues/105
 
@@ -206,8 +207,9 @@ https://user-images.githubusercontent.com/271616/225014776-1d567049-ad71-4ef2-b0
 ### Contributing
 
 - Contributors can open PRs
-- Collaborators can push to branches in the `llama.cpp` repo
+- Collaborators can push to branches in the `llama.cpp` repo and merge PRs into the `master` branch
 - Collaborators will be invited based on contributions
+- Any help with managing issues and PRs is very appreciated!
 
 ### Coding guidelines
 
@@ -217,7 +219,3 @@ https://user-images.githubusercontent.com/271616/225014776-1d567049-ad71-4ef2-b0
 - There are no strict rules for the code style, but try to follow the patterns in the code (indentation, spaces, etc.). Vertical alignment makes things more readable and easier to batch edit
 - Clean-up any trailing whitespaces, use 4 spaces indentation, brackets on same line, `void * ptr`, `int & a`
 - See [good first issues](https://github.com/ggerganov/llama.cpp/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) for tasks suitable for first contributions
-
-### Misc
-
-- Practice your C++ typing skills: https://typing-battles.ggerganov.com
