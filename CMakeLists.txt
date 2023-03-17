@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.8)
+
+# Allow the user to specify the MSVC runtime
+if (POLICY CMP0091)
+  cmake_policy(SET CMP0091 NEW)
+endif (POLICY CMP0091)
+
 project("llama.cpp")
+
+
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
@@ -108,6 +116,9 @@ add_executable(llama
     main.cpp
     utils.cpp
     utils.h)
+if(MSVC)
+set_property(TARGET llama PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
 
 add_executable(quantize
     quantize.cpp
@@ -117,6 +128,9 @@ add_executable(quantize
 add_library(ggml
     ggml.c
     ggml.h)
+if(MSVC)
+set_property(TARGET ggml PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
 
 target_compile_definitions(ggml PUBLIC ${LLAMA_EXTRA_FLAGS})
 target_compile_definitions(llama PUBLIC ${LLAMA_EXTRA_FLAGS})
@@ -125,4 +139,9 @@ target_compile_definitions(quantize PUBLIC ${LLAMA_EXTRA_FLAGS})
 target_link_libraries(ggml PRIVATE ${LLAMA_EXTRA_LIBS})
 target_include_directories(ggml PUBLIC .)
 target_link_libraries(quantize PRIVATE ggml)
+if(MSVC)
+target_include_directories(llama PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../sentencepiece/src)
+target_link_libraries(llama PRIVATE ggml ${CMAKE_CURRENT_LIST_DIR}/../sentencepiece/build/src/Debug/sentencepiece.lib)
+else()
 target_link_libraries(llama PRIVATE ggml)
+endif()

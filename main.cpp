@@ -803,8 +803,12 @@ const char * llama_print_system_info(void) {
 int main(int argc, char ** argv) {
     const auto status = processor.Load("../tinygrad/weights/LLaMA/tokenizer.model");
     if (!status.ok()) {
-       printf("Load sentencepiece model error: %s", status.ToString().c_str());
-       // error
+        printf("Load sentencepiece model error: %s", status.ToString().c_str());
+        const auto status = processor.Load("../../../tinygrad/weights/LLaMA/tokenizer.model");
+        if (!status.ok()) {
+            printf("Load sentencepiece model error: %s", status.ToString().c_str());
+            return -1;
+        }
     }
     ggml_time_init();
     const int64_t t_main_start_us = ggml_time_us();
