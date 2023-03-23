@@ -255,6 +255,7 @@ static bool llama_model_load(
         case 2: wtype = vtype = GGML_TYPE_Q4_0; break;
         case 3: wtype = vtype = GGML_TYPE_Q4_1; break;
         case 4: wtype = GGML_TYPE_Q4_1; vtype = GGML_TYPE_F16; break;
+        case 5: wtype = vtype = GGML_TYPE_Q8_0; break;
         default:
                 {
                     fprintf(stderr, "%s: invalid model file '%s' (bad f16 value %d)\n",
@@ -513,7 +514,7 @@ static bool llama_model_load(
                 }
 
                 if (0) {
-                    static const char * ftype_str[] = { "f32", "f16", "q4_0", "q4_1", };
+                    static const char * ftype_str[] = { "f32", "f16", "q4_0", "q4_1", "", "", "", "q8_0"};
                     fprintf(stderr, "%24s - [%5d, %5d], type = %6s, split = %d\n", name.data(), ne[0], ne[1], ftype_str[ftype], split_type);
                 }
 
@@ -524,6 +525,7 @@ static bool llama_model_load(
                     case 1: bpe = ggml_type_size(GGML_TYPE_F16);  break;
                     case 2: bpe = ggml_type_size(GGML_TYPE_Q4_0); assert(ne[0] % 64 == 0); break;
                     case 3: bpe = ggml_type_size(GGML_TYPE_Q4_1); assert(ne[0] % 64 == 0); break;
+                    case 7: bpe = ggml_type_size(GGML_TYPE_Q8_0); assert(ne[0] % 64 == 0); break;
                     default:
                             {
                                 fprintf(stderr, "%s: unknown ftype %d in model file\n", __func__, ftype);
@@ -533,8 +535,8 @@ static bool llama_model_load(
 
                 if (n_dims == 1 || n_parts == 1) {
                     if ((nelements*bpe)/ggml_blck_size(tensor->type) != ggml_nbytes(tensor)) {
-                        fprintf(stderr, "%s: tensor '%s' has wrong size in model file: got %zu, expected %zu\n",
-                                __func__, name.data(), ggml_nbytes(tensor), nelements*bpe);
+                        fprintf(stderr, "%s: tensor type %d '%s' has wrong size in model file: got %zu, expected %zu\n",
+                                __func__, tensor->type, name.data(), ggml_nbytes(tensor), nelements*bpe);
                         return false;
                     }
 
@@ -1114,10 +1116,11 @@ bool llama_model_quantize_internal(const std::string & fname_inp, const std::str
     switch (itype) {
         case 2: type = GGML_TYPE_Q4_0; break;
         case 3: type = GGML_TYPE_Q4_1; break;
+        case 5: type = GGML_TYPE_Q8_0; break;
         default: fprintf(stderr, "%s: invalid quantization type %d\n", __func__, itype); return 1;
     };
 
-    if (type != GGML_TYPE_Q4_0 && type != GGML_TYPE_Q4_1) {
+    if (type != GGML_TYPE_Q4_0 && type != GGML_TYPE_Q4_1 && type != GGML_TYPE_Q8_0) {
         fprintf(stderr, "%s: invalid quantization type %d\n", __func__, type);
         return false;
     }
@@ -1242,6 +1245,8 @@ bool llama_model_quantize_internal(const std::string & fname_inp, const std::str
         std::vector<float>       data_f32;
 
         std::vector<int64_t> hist_all(1 << 4, 0);
+        if(type == GGML_TYPE_Q8_0)
+            hist_all.resize(1 << 8, 0);
 
         while (true) {
             int32_t n_dims;
@@ -1267,7 +1272,7 @@ bool llama_model_quantize_internal(const std::string & fname_inp, const std::str
             finp.read (&name[0], length);
 
             {
-                static const char * ftype_str[] = { "f32", "f16", "q4_0", "q4_1", };
+                static const char * ftype_str[] = { "f32", "f16", "q4_0", "q4_1", "error", "error", "error", "q8_0"};
                 printf("%48s - [%5d, %5d], type = %6s ", name.data(), ne[0], ne[1], ftype_str[ftype]);
             }
 
@@ -1305,7 +1310,7 @@ bool llama_model_quantize_internal(const std::string & fname_inp, const std::str
                     finp.read(reinterpret_cast<char *>(data_f32.data()), nelements * sizeof(float));
                 }
 
-                ftype = itype;
+                ftype = (type == GGML_TYPE_Q8_0)?7:itype;
             } else {
                 const int bpe = (ftype == 0) ? sizeof(float) : sizeof(uint16_t);
 
@@ -1315,6 +1320,7 @@ bool llama_model_quantize_internal(const std::string & fname_inp, const std::str
 
             fout.write(reinterpret_cast<char *>(&n_dims), sizeof(n_dims));
             fout.write(reinterpret_cast<char *>(&length), sizeof(length));
+            printf("Write type: %d\n", ftype);
             fout.write(reinterpret_cast<char *>(&ftype),  sizeof(ftype));
             for (int i = 0; i < n_dims; ++i) {
                 fout.write(reinterpret_cast<char *>(&ne[i]), sizeof(ne[i]));
@@ -1327,7 +1333,8 @@ bool llama_model_quantize_internal(const std::string & fname_inp, const std::str
 
                 size_t cur_size = 0;
                 std::vector<int64_t> hist_cur(1 << 4, 0);
-
+                if(type == GGML_TYPE_Q8_0)
+                    hist_cur.resize(1 << 8, 0);
                 switch (type) {
                     case GGML_TYPE_Q4_0:
                         {
@@ -1336,6 +1343,10 @@ bool llama_model_quantize_internal(const std::string & fname_inp, const std::str
                     case GGML_TYPE_Q4_1:
                         {
                             cur_size = ggml_quantize_q4_1(data_f32.data(), work.data(), nelements, ne[0], qk, hist_cur.data());
+                        } break;
+                    case GGML_TYPE_Q8_0:
+                        {
+                            cur_size = ggml_quantize_q8_0(data_f32.data(), work.data(), nelements, ne[0], qk, hist_cur.data());
                         } break;
                     default:
                         {

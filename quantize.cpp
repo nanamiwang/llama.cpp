@@ -16,6 +16,7 @@ int main(int argc, char ** argv) {
         fprintf(stderr, "usage: %s model-f32.bin model-quant.bin type\n", argv[0]);
         fprintf(stderr, "  type = 2 - q4_0\n");
         fprintf(stderr, "  type = 3 - q4_1\n");
+        fprintf(stderr, "  type = 5 - q8_0\n");
         return 1;
     }
 
