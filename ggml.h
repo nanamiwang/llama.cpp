@@ -205,6 +205,7 @@ enum ggml_type {
     GGML_TYPE_I32,
     GGML_TYPE_F16,
     GGML_TYPE_F32,
+    GGML_TYPE_Q8_0,
     GGML_TYPE_COUNT,
 };
 

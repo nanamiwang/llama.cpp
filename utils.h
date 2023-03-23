@@ -103,3 +103,4 @@ void sample_top_k(std::vector<std::pair<double, gpt_vocab::id>> & logits_id, int
 
 size_t ggml_quantize_q4_0(float * src, void * dst, int n, int k, int qk, int64_t * hist);
 size_t ggml_quantize_q4_1(float * src, void * dst, int n, int k, int qk, int64_t * hist);
+size_t ggml_quantize_q8_0(float * src, void * dst, int n, int k, int qk, int64_t * hist);
